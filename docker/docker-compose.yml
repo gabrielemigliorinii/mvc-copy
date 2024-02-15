@@ -1,0 +1,72 @@
+version: '3.8'
+# docker compose dev
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.dev
+    container_name: nginx_container
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ../assets/icons:/var/www/media/icons
+      - ./nginx/error:/var/www/error
+      - ../app:/app
+    links:
+      - php
+    networks: 
+      - int3rnal
+  
+  php:
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    container_name: php_container
+    command: sh -c "chmod -R a+rw ../../../app && php-fpm -F -R"
+    restart: always
+    volumes:
+      - ../app:/app
+      - ../assets/:/assets
+      #- ../db/sql_qrys/:/app/sql_qrys
+      #- ../users_storage/:/app/users_storage
+      #- ./php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    env_file:
+      - ../.env.db
+      - ../.env.mail
+      - ../.env.conf
+    links:
+      - mariadb
+    networks: 
+      - int3rnal
+      
+  mariadb:
+    build:
+      context: ./mariadb
+      dockerfile: Dockerfile
+    container_name: mariadb_container
+    restart: unless-stopped
+
+    volumes:
+    #  - ../db/data:/var/lib/mysql
+      - ../db/structure/:/db/structure
+    environment:
+      #- MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1
+      - MARIADB_ROOT_PASSWORD=root
+      #- TZ=Europe/Rome
+    networks: 
+      - int3rnal
+      
+  adminer:
+    image: adminer:latest
+    restart: always
+    ports:
+      - 8080:8080
+    networks: 
+      - int3rnal
+  
+networks:
+  int3rnal:
+    driver: bridge
+    #driver_opts:
+    #  com.docker.network.bridge.name: n3tw0rk
